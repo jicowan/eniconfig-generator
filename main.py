@@ -101,7 +101,8 @@ subnet_mask = int(input('Enter subnet mask, e.g. 24: '))
 
 azs = get_azs()
 subnets = generate_subnets(vpc_cidr, subnet_mask)
-
+#//TODO create VPC CIDR
+create_cidr_block(vpc_cidr, vpcs[selection_1])
 i=0
 for az in azs:
     while verify_overlap(subnets[i], vpcs[selection_1]):
