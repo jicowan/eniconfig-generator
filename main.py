@@ -46,7 +46,16 @@ def create_subnets(az, cidr_block, vpc_id, cluster_name):
         CidrBlock=cidr_block,
         DryRun=False
     )
-    print(response.subnet_id)
+    waiter = ec2cli.get_waiter('subnet_available')
+    waiter.wait(
+        Filters=[
+            {
+                'Name': 'subnet-id',
+                'Values': [response.subnet_id]
+            }
+        ]
+    )
+    print("created " + response.subnet_id)
     subnet = ec2res.Subnet(response.subnet_id)
     subnet.create_tags(
         Tags=[
