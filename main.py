@@ -39,7 +39,7 @@ def create_cidr_block(cidr_block, vpc_id):
         VpcId=vpc_id
     )
 
-def create_subnets(az, cidr_block, vpc_id):
+def create_subnets(az, cidr_block, vpc_id, cluster_name):
     vpc = ec2res.Vpc(vpc_id)
     response = vpc.create_subnet(
         AvailabilityZone=az,
@@ -47,7 +47,6 @@ def create_subnets(az, cidr_block, vpc_id):
         DryRun=False
     )
     print(response.subnet_id)
-    cluster_name = get_cluster_name()
     subnet = ec2res.Subnet(response.subnet_id)
     subnet.create_tags(
         Tags=[
@@ -120,13 +119,14 @@ subnet_mask = int(input('Enter subnet mask, e.g. 24: '))
 
 azs = get_azs()
 subnets = generate_subnets(vpc_cidr, subnet_mask)
+cluster_name = get_cluster_name()
 #//TODO create VPC CIDR
 create_cidr_block(vpc_cidr, vpcs[vpc_index])
 i = 0
 for az in azs:
     while verify_overlap(subnets[i], vpcs[vpc_index]):
         i = i + 1
-    create_subnets(az, subnets[i], vpcs[vpc_index])
+    create_subnets(az, subnets[i], vpcs[vpc_index], cluster_name)
     ec = Eniconfig(az, subnets[i], security_groups[sg_index]['SecurityGroupId'])
     create_eniconfig(ec)
 
