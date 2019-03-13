@@ -1,14 +1,16 @@
 import ipaddress
 from boto3 import client
 from boto3 import resource
+from kubernetes import config
 
 ec2cli = client('ec2')
 ec2res = resource('ec2')
 
 class Eniconfig:
-    name = ""
-    subnetId = ""
-    securityGroupId = ""
+    def __init__(self, name, subnetId, securityGroupId):
+        self.name = name
+        self.subnetId = subnetId
+        self.securityGroupId = securityGroupId
 
 def generate_subnets(vpc_cidr, subnet_mask):
     subnets = []
@@ -45,6 +47,16 @@ def create_subnets(az, cidr_block, vpc_id):
         DryRun=False
     )
     print(response.subnet_id)
+    cluster_name = get_cluster_name()
+    subnet = ec2res.Subnet(response.subnet_id)
+    subnet.create_tags(
+        Tags=[
+            {
+                'Key': 'kubernetes.io/cluster/' + cluster_name,
+                'Value': 'shared'
+            },
+        ]
+    )
 
 def verify_overlap(cidr_block, vpc_id):
     vpc = ec2res.Vpc(vpc_id)
@@ -65,6 +77,13 @@ spec:
 securityGroups:
 - """ + Eniconfig.securityGroupId)
     f.close()
+
+def get_cluster_name():
+    cluster_config = config.kube_config.list_kube_config_contexts()
+    cluster_name = cluster_config[1]['context']['cluster']
+    if '.' in cluster_name:
+        cluster_name = cluster_name.split('.')[0]
+    return cluster_name
 
 def get_security_groups(vpc_id):
     response = ec2cli.describe_security_groups(
@@ -89,12 +108,12 @@ for vpc_id in vpc_ids:
 for i in range(len(vpcs)):
     print(i, vpcs[i])
 
-selection_1 = int(input('Choose a VPC ID: '))
-security_groups = get_security_groups(vpcs[selection_1])
+vpc_index = int(input('Choose a VPC ID: '))
+security_groups = get_security_groups(vpcs[vpc_index])
 
 for i in range(len(security_groups)):
     print(i, security_groups[i]['SecurityGroupId'], security_groups[i]['SecurityGroupName'])
-selection_2 = int(input('Choose a security group: '))
+sg_index = int(input('Choose a security group: '))
 
 vpc_cidr = str(input('Enter VPC CIDR range, e.g. 100.64.0.0/16: '))
 subnet_mask = int(input('Enter subnet mask, e.g. 24: '))
@@ -102,16 +121,13 @@ subnet_mask = int(input('Enter subnet mask, e.g. 24: '))
 azs = get_azs()
 subnets = generate_subnets(vpc_cidr, subnet_mask)
 #//TODO create VPC CIDR
-create_cidr_block(vpc_cidr, vpcs[selection_1])
-i=0
+create_cidr_block(vpc_cidr, vpcs[vpc_index])
+i = 0
 for az in azs:
-    while verify_overlap(subnets[i], vpcs[selection_1]):
+    while verify_overlap(subnets[i], vpcs[vpc_index]):
         i = i + 1
-    create_subnets(az, subnets[i], vpcs[selection_1])
-    ec = Eniconfig()
-    ec.name = az
-    ec.subnetId = subnets[i]
-    ec.securityGroupId = security_groups[selection_2]['SecurityGroupId']
+    create_subnets(az, subnets[i], vpcs[vpc_index])
+    ec = Eniconfig(az, subnets[i], security_groups[sg_index]['SecurityGroupId'])
     create_eniconfig(ec)
 
 
