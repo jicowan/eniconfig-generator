@@ -65,6 +65,7 @@ def create_subnets(az, cidr_block, vpc_id, cluster_name):
             },
         ]
     )
+    return response.subnet_id
 
 def verify_overlap(cidr_block, vpc_id):
     vpc = ec2res.Vpc(vpc_id)
@@ -82,8 +83,8 @@ metadata:
   name: """ + Eniconfig.name + """
 spec:
   subnet: """ + Eniconfig.subnetId + """
-securityGroups:
-- """ + Eniconfig.securityGroupId)
+  securityGroups:
+  - """ + Eniconfig.securityGroupId)
     f.close()
 
 def get_cluster_name():
@@ -135,8 +136,8 @@ i = 0
 for az in azs:
     while verify_overlap(subnets[i], vpcs[vpc_index]):
         i = i + 1
-    create_subnets(az, subnets[i], vpcs[vpc_index], cluster_name)
-    ec = Eniconfig(az, subnets[i], security_groups[sg_index]['SecurityGroupId'])
+    subnet_id = create_subnets(az, subnets[i], vpcs[vpc_index], cluster_name)
+    ec = Eniconfig(az, subnet_id, security_groups[sg_index]['SecurityGroupId'])
     create_eniconfig(ec)
 
 
