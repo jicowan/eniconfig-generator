@@ -79,9 +79,9 @@ def create_eniconfig(Eniconfig):
         f.write("""apiVersion: crd.k8s.amazonaws.com/v1alpha1
 kind: ENIConfig
 metadata:
-  name:""" + Eniconfig.name + """
+  name: """ + Eniconfig.name + """
 spec:
-  subnet:""" + Eniconfig.subnetId + """
+  subnet: """ + Eniconfig.subnetId + """
 securityGroups:
 - """ + Eniconfig.securityGroupId)
     f.close()
